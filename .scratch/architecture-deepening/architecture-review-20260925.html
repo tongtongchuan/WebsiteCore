@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Architecture review for WebsiteCore</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 5 4; }
+      .leak { stroke: #dc2626 !important; stroke-width: 2px; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .badge { display:inline-flex; align-items:center; border-radius:9999px; padding:.15rem .6rem; font-size:.7rem; letter-spacing:.05em; text-transform:uppercase; font-weight:600; }
+      .box { border:1px solid #cbd5e1; border-radius:.5rem; background:#fff; }
+      .box-label { font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; color:#475569; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-6xl mx-auto px-6 py-12 space-y-14">
+
+      <header class="space-y-4">
+        <h1 class="font-serif text-4xl">Architecture review for WebsiteCore</h1>
+        <p class="text-slate-500 text-sm">2026-09-25 · deepening opportunities · 只读评审，未改动任何文件</p>
+        <div class="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-600 border-y border-slate-200 py-3">
+          <span class="flex items-center gap-2"><span class="inline-block w-5 h-4 border border-slate-400 bg-white"></span> module</span>
+          <span class="flex items-center gap-2"><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" class="seam" stroke="#64748b"/></svg> seam</span>
+          <span class="flex items-center gap-2"><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" class="leak"/></svg> leakage</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-5 h-4 deep rounded-sm"></span> deep module</span>
+        </div>
+      </header>
+
+      <section id="candidates" class="space-y-12">
+
+        <!-- ============ 1 ============ -->
+        <article id="c1" class="box p-6 space-y-5 border-l-4 border-l-emerald-500">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">Collapse four DB-engine cascades into one engine-descriptor module</h2>
+            <span class="badge bg-emerald-100 text-emerald-800">Strong</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-slate-100 text-slate-600">ports &amp; adapters</span>
+            <span class="badge bg-indigo-50 text-indigo-700">recently changed</span>
+          </div>
+          <p class="font-mono text-xs text-slate-600 leading-relaxed">
+            internal/conf/db.go:70-83 · internal/conf/db_gorm.go:72-84 ·
+            internal/infra/migration/migration_embed.go:42-53 · :59-71
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">Before — 同一映射重写四遍，且已分叉</p>
+              <pre class="mermaid">
+flowchart TB
+  F[cfg Feature suite] --> D1[db.go newSqlDB]
+  F --> D2[db_gorm.go]
+  F --> D3["migration_embed.go :42<br/>open DB"]
+  F --> D4["migration_embed.go :59<br/>pick drivers"]
+  D1 --> S[(sql.DB)]
+  D2 --> G[(gorm.DB)]
+  D3 --> M[(migrate)]
+  D4 --> M
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class D1,D2,D3,D4 leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">After — 一处拥有 engine 知识</p>
+              <pre class="mermaid">
+flowchart TB
+  F[cfg Feature suite] --> E["engine-descriptor module<br/>(driver, DSN, dialector,<br/>migration source)"]
+  E --> A1[sql adapter]
+  E --> A2[gorm adapter]
+  E --> A3[migration adapter]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a,stroke-width:2px;
+  class E deep
+              </pre>
+            </div>
+          </div>
+
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Problem ·</strong> 同一个 feature-suite → driver / DSN / dialector / migration-source 映射在四个 seam 各写一遍，已经分叉：<code class="text-xs">db_gorm.go:75</code> 只认 <code class="text-xs">cfg.If("Postgres")</code>，而 <code class="text-xs">db.go:74</code> 与 <code class="text-xs">migration_embed.go:45</code> 还接受 <code class="text-xs">"PostgreSQL"</code> 别名；<code class="text-xs">migration_embed.go:49</code> 直接丢弃 <code class="text-xs">OpenSqlite3</code> 的 driver，留下 <code class="text-xs">dbName</code> 空串传进 <code class="text-xs">:81</code>。</p>
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Solution ·</strong> 让一个 module 独占 engine 选择，产出一个 descriptor（SQL driver、DSN、GORM dialector、migration source 目录与 DB driver），供三个 caller 的薄 adapter 消费。</p>
+
+          <ul class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>locality：engine 知识收敛到一处</li>
+            <li>leverage：三个 caller 共享一个 descriptor</li>
+            <li>修掉 PostgreSQL 别名分叉</li>
+            <li>修掉 sqlite driver 被丢弃</li>
+            <li>deletion test：concentrates</li>
+          </ul>
+
+          <div class="bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-lg p-3">
+            证据：embedded base <code>internal/conf/config.yaml:39</code> 的 <code>Default: []</code>，所以三处 <code>else → MySQL</code> fallback 今天仍可达。
+          </div>
+        </article>
+
+        <!-- ============ 2 ============ -->
+        <article id="c2" class="box p-6 space-y-5">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">Give the migration module a seam instead of global reads</h2>
+            <span class="badge bg-emerald-100 text-emerald-800">Strong</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-slate-100 text-slate-600">ports &amp; adapters</span>
+            <span class="badge bg-indigo-50 text-indigo-700">recently changed</span>
+          </div>
+          <p class="font-mono text-xs text-slate-600 leading-relaxed">
+            internal/infra/migration/migration.go:16-21 · migration_embed.go:28-91 ·
+            internal/internal.go:14-18 · cmd/migrate/migrate.go:40-43
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">Before — interface 背后全是全局读</p>
+              <pre class="mermaid">
+flowchart LR
+  SV[serve] --> RU["Run() error"]
+  MI[migrate cmd] --> RU
+  RU -.-> CFG["cfg.If / conf globals"]
+  RU -.-> DBI[(backing service)]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class CFG leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">After — 依赖从 interface 进</p>
+              <pre class="mermaid">
+flowchart LR
+  C[callers] --> MOD["migration module<br/>Result / error"]
+  MOD --> AD["adapter(descriptor, source)"]
+  AD --> DBI[(backing service)]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a,stroke-width:2px;
+  class MOD deep
+              </pre>
+            </div>
+          </div>
+
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Problem ·</strong> <code class="text-xs">Run() error</code> 不接任何入参，直接伸手读进程级 feature registry（<code class="text-xs">cfg.If</code>，migration.go:17 / migration_embed.go:29）与约 40 个 conf 全局（<code class="text-xs">conf.MysqlSetting</code>，:44）；enabled 分支和 unsupported 分支都无法从 interface 触发，没有测试。</p>
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Solution ·</strong> 把 migration 做成接收 engine descriptor + embedded source、返回 typed outcome 的 module；两个 build tag 变体成为同一 interface 的两个 adapter。</p>
+
+          <ul class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>interface 即 test surface</li>
+            <li>两个 build-tag adapter 证明 seam 真实</li>
+            <li>caller 各自决定失败策略</li>
+            <li>locality：enablement 读一处</li>
+          </ul>
+        </article>
+
+        <!-- ============ 3 ============ -->
+        <article id="c3" class="box p-6 space-y-5">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">One visibility &amp; audit policy module</h2>
+            <span class="badge bg-emerald-100 text-emerald-800">Strong</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-slate-100 text-slate-600">in-process</span>
+            <span class="badge bg-indigo-50 text-indigo-700">hot spot</span>
+          </div>
+          <p class="font-mono text-xs text-slate-600 leading-relaxed">
+            internal/servants/base/base.go:258-303 · servants/web/loose.go:556-568 ·
+            dao/jinzhu/comments.go:61-70, :135-143 · servants/web/priv.go:231, :378, :540, :677, :819-897 ·
+            dao/jinzhu/tweets.go:390-406
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">Before — 真值表散在约 10 个 module</p>
+              <pre class="mermaid">
+flowchart TB
+  P["visibility × audit × viewer"] --> A[base.CanViewTweet]
+  P --> B[loose.TweetDetail switch]
+  P --> C[comments.addCommentAuditScope]
+  P --> D[tweets.getUserTweets SQL]
+  P --> E["priv.go ×4 (each TODO)"]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class A,B,C,D,E leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">After — 一处裁决，两侧消费</p>
+              <pre class="mermaid">
+flowchart TB
+  P["visibility × audit × viewer"] --> V["ViewerPolicy<br/>CanView / CanComment"]
+  V --> S[servant answers]
+  V --> F[DAO filter as data]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a,stroke-width:2px;
+  class V deep
+              </pre>
+            </div>
+          </div>
+
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Problem ·</strong> post 可见性 × audit status × viewer role 的真值表横跨约 10 个 module（servant 的 switch、DAO 的 SQL predicate、内存里的 reply 过滤），<code class="text-xs">priv.go:819/845/870/896</code> 四处各自留着同一条「缺统一 permission checker，好友可见 post 没处理，是 bug」的 TODO——no locality，no seam。</p>
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Solution ·</strong> 一个深的 policy module 独占 <code class="text-xs">CanView</code>/<code class="text-xs">CanComment</code> 裁决；servant 调它，DAO 收它给出的 filter 数据，而不是自己再推一遍 SQL 规则。</p>
+
+          <ul class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>删 <code class="text-xs">CanViewTweet</code> → switch 在 5 处重现</li>
+            <li>locality：好友可见 bug 只修一处</li>
+            <li>interface：query + viewer → decision</li>
+            <li>DAO 收 filter 数据而非规则</li>
+          </ul>
+        </article>
+
+        <!-- ============ 4 ============ -->
+        <article id="c4" class="box p-6 space-y-5">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">One post-view assembler; retire the MergePosts / RevampPosts twins</h2>
+            <span class="badge bg-emerald-100 text-emerald-800">Strong</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-slate-100 text-slate-600">in-process</span>
+            <span class="badge bg-indigo-50 text-indigo-700">hot spot</span>
+          </div>
+          <p class="font-mono text-xs text-slate-600 leading-relaxed">
+            dao/jinzhu/tweets.go:83-163 · servants/base/base.go:305-362 ·
+            servants/web/loose.go:109-118, :233-242, :272-281, :314-323, :523-549 ·
+            servants/web/core.go:192-197, :257-262 · model/web/core.go:32-46 · servants/web/admin.go:147-157
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="box-label mb-3">Before — 两个 near-twin + 身份字段四处重映射</p>
+              <div class="space-y-2 text-center">
+                <div class="grid grid-cols-4 gap-1">
+                  <div class="box py-2 box-label">core</div>
+                  <div class="box py-2 box-label">loose</div>
+                  <div class="box py-2 box-label">audit</div>
+                  <div class="box py-2 box-label">trends</div>
+                </div>
+                <svg viewBox="0 0 300 46" class="w-full h-12"><path d="M40 0 L120 40 M110 0 L135 40 M190 0 L165 40 M260 0 L180 40" stroke="#dc2626" stroke-width="2" fill="none"/></svg>
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="box py-3 border-red-400"><span class="box-label">MergePosts</span></div>
+                  <div class="box py-3 border-red-400"><span class="box-label">RevampPosts</span></div>
+                </div>
+                <div class="box py-2 box-label">PrepareTweets · RoleList / IdentityOf / MaskPhone ×4 站点</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="box-label mb-3">After — 一个深 assembler</p>
+              <div class="space-y-2 text-center">
+                <div class="grid grid-cols-4 gap-1">
+                  <div class="box py-2 box-label">core</div>
+                  <div class="box py-2 box-label">loose</div>
+                  <div class="box py-2 box-label">audit</div>
+                  <div class="box py-2 box-label">trends</div>
+                </div>
+                <svg viewBox="0 0 300 24" class="w-full h-6"><path d="M40 0 L140 22 M110 0 L148 22 M190 0 L152 22 M260 0 L160 22" stroke="#64748b" stroke-width="1.5" fill="none"/></svg>
+                <div class="deep text-white rounded-lg py-6"><span class="box-label text-slate-300">PostView.Format(viewer, rows)</span></div>
+                <div class="box py-2 box-label text-slate-400">MergePosts · RevampPosts · identity mapping 全在内部</div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Problem ·</strong> list/detail 的组装是 shallow wrapper——并没有减少 caller 需要知道的东西——而 <code class="text-xs">GetTweetBy</code>/<code class="text-xs">TweetDetail</code> 又手写一遍；<code class="text-xs">UserInfoResp</code> 的 <code class="text-xs">RoleList</code>/<code class="text-xs">IdentityOf</code>/<code class="text-xs">MaskPhone</code> 在 core.go:64-80、loose.go:354-369、admin.go:147-157,168-178、chat.go:131-137 反复重映射。</p>
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Solution ·</strong> 一个深的 view assembler 接收 <code class="text-xs">(viewer, posts|user)</code>，一次返回格式化后的形状，取代 <code class="text-xs">MergePosts</code>/<code class="text-xs">RevampPosts</code> 双胞胎与各处的 <code class="text-xs">PrepareTweets</code> 排序。</p>
+
+          <ul class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>删 <code class="text-xs">RevampPosts</code> → 复杂度并入 twin</li>
+            <li>删 <code class="text-xs">GetTweetBy</code> → 逻辑在内部</li>
+            <li>身份字段映射收敛一处</li>
+            <li>leverage：一个 view，N 个读站点</li>
+          </ul>
+        </article>
+
+        <!-- ============ 5 ============ -->
+        <article id="c5" class="box p-6 space-y-5">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">Shared search query plan; adapters translate only</h2>
+            <span class="badge bg-emerald-100 text-emerald-800">Strong</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-slate-100 text-slate-600">ports &amp; adapters</span>
+            <span class="badge bg-indigo-50 text-indigo-700">hot spot</span>
+          </div>
+          <p class="font-mono text-xs text-slate-600 leading-relaxed">
+            dao/search/meili.go:79-95, :97-160 · dao/search/zinc.go:75-91, :93-140 ·
+            servants/web/loose.go:44-51 · dao/dao.go:116-131
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">Before — dispatch 在两个 adapter 各克隆一份</p>
+              <pre class="mermaid">
+flowchart TB
+  L["loose.SearchType switch"] --> M[meili.Search]
+  L --> Z[zinc.Search]
+  M --> M1[queryByContent]
+  M --> M2[queryByTag]
+  M --> M3[queryAny]
+  Z --> Z1[queryByContent]
+  Z --> Z2[queryByTag]
+  Z --> Z3[queryAny]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class M,Z leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">After — 共享 dispatch + QueryPlan</p>
+              <pre class="mermaid">
+flowchart TB
+  L["loose"] --> S["Search dispatch (shared)"]
+  S --> Q[QueryPlan]
+  Q --> M[meili adapter]
+  Q --> Z[zinc adapter]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a,stroke-width:2px;
+  class S,Q deep
+              </pre>
+            </div>
+          </div>
+
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Problem ·</strong> 每个 adapter 独立重推同一个 content/tag/any 三选一决策（<code class="text-xs">meili.go:80-86</code>、<code class="text-xs">zinc.go:76-82</code>），并各写一遍三个 query 变体，差异只在 transport——interface 几乎与实现一样复杂，shallow 且重复的 seam。</p>
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Solution ·</strong> 把「选哪个 query 变体 + 构造 backend-neutral 的 query plan」移进一个深 module；每个 adapter 只把 plan 翻成 Meili/Zinc 细节并映射命中。</p>
+
+          <ul class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>两个 adapter 是真实 seam</li>
+            <li>dispatch 不再是泄漏点</li>
+            <li>新增 backend 只写翻译</li>
+            <li>deletion test：concentrates</li>
+          </ul>
+        </article>
+
+        <!-- ============ 6 ============ -->
+        <article id="c6" class="box p-6 space-y-5">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">Retire the dead adapter trees: sakila/slonik and WebDataServantA</h2>
+            <span class="badge bg-emerald-100 text-emerald-800">Strong</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-slate-100 text-slate-600">ports &amp; adapters</span>
+          </div>
+          <p class="font-mono text-xs text-slate-600 leading-relaxed">
+            dao/sakila/sakila.go:15-27 · dao/slonik/slonik.go:15-27 · dao/dao.go:34-37, :49-60, :71-89 ·
+            core/core.go:46-54 · dao/jinzhu/tweets.go:638-736 · servants/base/base.go:39, :501
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="box-label mb-3">Before — 一个真 adapter + 两棵 Fatal/stub 树</p>
+              <div class="space-y-3 text-center">
+                <div class="box py-2 box-label">dao cfg.If{Gorm | Sqlx | Sqlc}</div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="box py-3">jinzhu</div>
+                  <div class="box py-3 border-red-400"><span class="box-label">sakila<br/>Fatal</span></div>
+                  <div class="box py-3 border-red-400"><span class="box-label">slonik<br/>Fatal</span></div>
+                </div>
+                <div class="box py-2 border-red-400"><span class="box-label">WebDataServantA · 20+ 方法全 ErrNotImplemented</span></div>
+                <div class="box py-2 box-label text-slate-400">DaoServant.Dsa ← 无人读</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="box-label mb-3">After — 注册表 + 显式错误</p>
+              <div class="space-y-3 text-center">
+                <div class="box py-2 box-label">dao → backend registry</div>
+                <svg viewBox="0 0 300 20" class="w-full h-5"><path d="M150 0 L150 20" stroke="#64748b" stroke-width="1.5" fill="none"/></svg>
+                <div class="box py-3">jinzhu</div>
+                <div class="box py-2 box-label text-slate-400">unsupported → wiring 时显式 error，无 stub 树</div>
+                <div class="box py-2 box-label text-slate-400">Dsa 折叠进 DataService</div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Problem ·</strong> 整条平行的 <code class="text-xs">WebDataServantA</code> interface（20+ 方法）全部 <code class="text-xs">return nil, debug.ErrNotImplemented</code>（tweets.go:638-736），被构造并挂到每个 <code class="text-xs">DaoServant</code>（base.go:501）却无人调用；<code class="text-xs">sakila</code>/<code class="text-xs">slonik</code> 一被选中就 <code class="text-xs">logrus.Fatal</code>。one adapter = hypothetical seam。</p>
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Solution ·</strong> 一个 backend 注册 module；不支持的 backend 在 wiring 时显式报错，删掉两棵 stub 树与重复的 <code class="text-xs">AuthorizationManageService</code> cascade；<code class="text-xs">WebDataServantA</code> 折叠进既有 data interface，或等第二个真 adapter 出现再拆。</p>
+
+          <ul class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>deletion test：pass-through，直接删</li>
+            <li>删 20+ stub 方法</li>
+            <li>去掉 Fatal 型的导航陷阱</li>
+            <li>interface 复杂度归零</li>
+          </ul>
+        </article>
+
+        <!-- ============ 7 ============ -->
+        <article id="c7" class="box p-6 space-y-5">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">One cache-key module owns write and invalidation</h2>
+            <span class="badge bg-amber-100 text-amber-800">Worth exploring</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-slate-100 text-slate-600">in-process</span>
+            <span class="badge bg-indigo-50 text-indigo-700">hot spot</span>
+          </div>
+          <p class="font-mono text-xs text-slate-600 leading-relaxed">
+            servants/web/core.go:386 · servants/web/loose.go:139-209 · servants/web/trends.go:57 ·
+            servants/web/events.go:242-246, :282, :320-328 · servants/web/followship.go:86-89, :113-116
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">Before — key 语法在两处手写</p>
+              <pre class="mermaid">
+flowchart LR
+  SV[servant] --> K["fmt key<br/>(raw prefix)"]
+  EV[event] --> P["fmt pattern<br/>(raw prefix)"]
+  K --> C[(AppCache)]
+  P --> C
+  K -.同一 pattern.-> P
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class K,P leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="box-label mb-2">After — KeySpace 拥有语法</p>
+              <pre class="mermaid">
+flowchart LR
+  SV[servant] --> KS["KeySpace<br/>build + invalidate"]
+  EV[event] --> KS
+  KS --> C[(AppCache)]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a,stroke-width:2px;
+  class KS deep
+              </pre>
+            </div>
+          </div>
+
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Problem ·</strong> 每个 servant 手拼 raw prefix + format key，而失效逻辑在 <code class="text-xs">events.go</code> 里又把同一批 pattern 硬编码一遍；<code class="text-xs">followship.go:85/:112</code> 还注明 event fan-out 待合并——写 key 与过期 key 之间没有 locality。</p>
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Solution ·</strong> 一个深的 cache-key module 拥有 key 构造并暴露失效操作，caller 永不手写 pattern。</p>
+
+          <ul class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>删 helper → format string 在 5 处重现</li>
+            <li>locality：写与失效同一处</li>
+            <li>interface：操作，不是字符串</li>
+          </ul>
+        </article>
+
+        <!-- ============ 8 ============ -->
+        <article id="c8" class="box p-6 space-y-5">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">Make the sitesetting Definition table the single source</h2>
+            <span class="badge bg-amber-100 text-amber-800">Worth exploring</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-slate-100 text-slate-600">in-process</span>
+            <span class="badge bg-indigo-50 text-indigo-700">hot spot</span>
+          </div>
+          <p class="font-mono text-xs text-slate-600 leading-relaxed">
+            internal/sitesetting/registry.go:34-49, :192-262, :270-363 ·
+            internal/sitesetting/service.go:22-37, :111-131, :133-157, :420-452
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="box-label mb-3">Before — 加一个 setting 改七处</p>
+              <div class="space-y-2 text-center">
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="box py-2 box-label">snapshot struct</div>
+                  <div class="box py-2 box-label">fill fn</div>
+                  <div class="box py-2 box-label">Definition 表</div>
+                  <div class="box py-2 box-label">EditableProfile</div>
+                  <div class="box py-2 box-label">GetProfile</div>
+                  <div class="box py-2 box-label border-red-400">validate</div>
+                </div>
+                <p class="text-xs text-red-600">每个框都镜像同一份字段知识</p>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="box-label mb-3">After — 表是权威</p>
+              <div class="space-y-3 text-center">
+                <div class="deep text-white rounded-lg py-4"><span class="box-label text-slate-300">Definition table (authoritative)</span></div>
+                <svg viewBox="0 0 300 22" class="w-full h-6"><path d="M80 0 L60 22 M150 0 L150 22 M220 0 L240 22" stroke="#64748b" stroke-width="1.5" fill="none"/></svg>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="box py-2 box-label">snapshot</div>
+                  <div class="box py-2 box-label">profile</div>
+                  <div class="box py-2 box-label">validation</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Problem ·</strong> 加一个 setting 要同时改 snapshot struct（registry.go:34-49）、fill 函数（:192-262）、<code class="text-xs">Definition</code> 表（:270-363），再加上 <code class="text-xs">EditableProfile</code>、<code class="text-xs">GetProfile</code>、<code class="text-xs">UpdateEditableProfile</code>、<code class="text-xs">validateProfileInput</code>——add-a-setting 的 interface 十分浅，字段知识重复七处。</p>
+          <p><strong class="text-slate-500 uppercase text-xs tracking-wider">Solution ·</strong> 让 <code class="text-xs">Definition</code> 表成为单一来源，snapshot、profile 映射与校验都从它派生。</p>
+
+          <ul class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>加 setting 从 7 处降到 1 处</li>
+            <li>deletion test：镜像 concentrate 进表</li>
+            <li>唯一有测试的 module，可放大 leverage</li>
+          </ul>
+        </article>
+
+      </section>
+
+      <section id="top-recommendation" class="box p-8 border-l-4 border-l-emerald-500 bg-white space-y-3">
+        <p class="box-label">Top recommendation</p>
+        <h2 class="font-serif text-2xl">
+          <a href="#c1" class="underline decoration-emerald-400 decoration-2 underline-offset-4">Collapse four DB-engine cascades into one engine-descriptor module</a>
+        </h2>
+        <p class="text-slate-700">
+          它是这批里唯一有<strong>已分叉行为</strong>作证据的：<code class="text-xs">db_gorm.go:75</code> 漏掉 <code class="text-xs">"PostgreSQL"</code> 别名、<code class="text-xs">migration_embed.go:49</code> 丢弃 sqlite driver。deletion test 明确 concentrates，且正处于本分支刚改动的 migration/config 区域——locality 与 leverage 的收益同时最大。
+        </p>
+      </section>
+
+    </main>
+  </body>
+</html>
