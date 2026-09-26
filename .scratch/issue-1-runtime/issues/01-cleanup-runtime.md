@@ -30,4 +30,6 @@ go test ./...; go vet ./...; go mod tidy -diff; git diff --check;
 go build -tags generate -o /tmp/websitecore-issue1-mir-generator ./mirc.
 
 Code review: Standards 0 findings; Spec 0 findings. See ../review.md.
-No business branch pushed; no PR created pending user review under AGENTS.md.
+User reviewed the change, completed manual smoke testing, and authorized PR publication.
+Branch pushed to fork; PR: https://github.com/BZYA-Community/WebsiteCore/pull/65
+Smoke app on port 18008 and its compose containers stopped; volumes, media and logs retained.
