@@ -1,5 +1,6 @@
 ## Development habits
 
+- Use `AGENTS.md` and its referenced configuration for agent instructions. Ignore `CLAUDE.md` when implementing or reviewing changes, including instructions inherited through skills or sub-agents.
 - Unless explicitly instructed otherwise, PRs must be reviewed by the user before being opened.
 
 ## Agent skills
