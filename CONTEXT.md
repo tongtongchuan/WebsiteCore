@@ -48,6 +48,14 @@ _Avoid_: Identity, teacher role, mentor role
 An account used exclusively for the Operator or Administrator role. It cannot also be a Member or be converted into one; removing its final management role deactivates the account.
 _Avoid_: Staff member, administrator member
 
+**Suspended account**:
+An account temporarily prevented from signing in or acting while its identity, designations, historical records, and owned relationships remain intact. Suspending a Teacher does not hide the Teacher's Courses; management can still transfer them.
+_Avoid_: Deleted account, role removal
+
+**Soft-deleted account**:
+An account hidden from normal use and discovery while retained for possible recovery. A Teacher cannot be soft-deleted while still assigned to a Course or carrying the Mentor designation.
+_Avoid_: Suspended account, hard deletion
+
 **Operator**:
 A platform management role for system-wide operational authority. An Operator uses a dedicated management account, not a member account.
 _Avoid_: Manager, owner
@@ -83,6 +91,10 @@ _Avoid_: Teacher identity, teacher role
 **Visitor**:
 A person browsing without an authenticated member account. Visitor is not a member identity.
 _Avoid_: Guest account, unverified member
+
+**Legacy display identity**:
+The deprecated single-string `identity` representation retained temporarily for older clients. It is derived from the structured management roles, member identity, and Mentor designation and is never an authorization source.
+_Avoid_: Canonical identity, permission check
 
 **Conversation request**:
 The first private message an eligible Member sends to another account when they have no established conversation. It remains pending and prevents further messages from that sender until the recipient replies.
