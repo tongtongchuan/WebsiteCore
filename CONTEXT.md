@@ -80,6 +80,10 @@ _Avoid_: Teacher identity, teacher role
 A person browsing without an authenticated member account. Visitor is not a member identity.
 _Avoid_: Guest account, unverified member
 
+**Conversation request**:
+The first private message a Student sends to a Teacher. It remains pending and prevents further messages from that Student until the Teacher replies.
+_Avoid_: Chat request, friend request
+
 ### Content moderation
 
 **Pre-publication review**:
