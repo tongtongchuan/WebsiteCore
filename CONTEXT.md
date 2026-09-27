@@ -45,11 +45,11 @@ An Operator, Administrator, or Auditor classification granting operational autho
 _Avoid_: Identity, teacher role, mentor role
 
 **Operator**:
-A platform management role for system-wide operational authority. An Operator is not a member and has no member identity.
+A platform management role for system-wide operational authority. An Operator uses a dedicated management account, not a member account.
 _Avoid_: Manager, owner
 
 **Administrator**:
-A platform management role for user and platform administration. An Administrator is not a member and has no member identity.
+A platform management role for user and platform administration. An Administrator uses a dedicated management account, not a member account.
 _Avoid_: Admin identity, teacher administrator
 
 **Auditor**:
@@ -81,8 +81,16 @@ A person browsing without an authenticated member account. Visitor is not a memb
 _Avoid_: Guest account, unverified member
 
 **Conversation request**:
-The first private message a Student sends to a Teacher. It remains pending and prevents further messages from that Student until the Teacher replies.
+The first private message an eligible Member sends to another Member when they have no established conversation. It remains pending and prevents further messages from that sender until the recipient replies.
 _Avoid_: Chat request, friend request
+
+**Established conversation**:
+A private-message relationship in which both participants have sent at least one message. Eligible participants may continue messaging until either one blocks the other.
+_Avoid_: Friendship, follow relationship
+
+**Private-message block**:
+A participant-controlled restriction that prevents both participants from sending further private messages while preserving their conversation history.
+_Avoid_: Delete conversation, report user
 
 ### Content moderation
 
