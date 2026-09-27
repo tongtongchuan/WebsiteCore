@@ -37,3 +37,33 @@ _Avoid_: auto-migrate
 **Migration build tag**:
 The Go build tag `migration`, which embeds the migration files into the binary. It decides whether migration support is *compiled in*. It is independent of the Migration feature; startup migration requires both.
 _Avoid_: migration flag
+
+### Identity and access
+
+**Platform management role**:
+An account classification for operational authority across the platform. It is distinct from a member identity.
+_Avoid_: Identity, teacher role, mentor role
+
+**Member identity**:
+The exactly-one classification of an ordinary registered member as a Student or Teacher.
+_Avoid_: Management role, permission group
+
+**Student**:
+The member identity for a young participant who creates projects and joins courses.
+_Avoid_: Fellow, regular user
+
+**Teacher**:
+The member identity for an adult qualified to teach or guide; a Teacher need not currently teach a Course.
+_Avoid_: Course instructor, mentor
+
+**Mentor designation**:
+An additional designation held only by a Teacher. It is neither a platform management role nor a member identity.
+_Avoid_: Mentor role, mentor identity
+
+**Course instructor assignment**:
+The relationship between a Teacher and a Course identifying who teaches it. The relationship does not define whether the member is a Teacher.
+_Avoid_: Teacher identity, teacher role
+
+**Visitor**:
+A person browsing without an authenticated member account. Visitor is not a member identity.
+_Avoid_: Guest account, unverified member
