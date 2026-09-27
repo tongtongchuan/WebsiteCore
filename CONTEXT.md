@@ -53,7 +53,7 @@ A platform management role for user and platform administration. An Administrato
 _Avoid_: Admin identity, teacher administrator
 
 **Auditor**:
-A platform management role for content moderation that may coexist with a member identity.
+A platform management role that grants content-moderation authority to a Member. Operators and Administrators have the same authority without holding the Auditor role.
 _Avoid_: Reviewer identity, moderator identity
 
 **Member identity**:
@@ -89,7 +89,7 @@ A private-message relationship in which both participants have sent at least one
 _Avoid_: Friendship, follow relationship
 
 **Private-message block**:
-A participant-controlled restriction that prevents both participants from sending further private messages while preserving their conversation history.
+A Member-controlled restriction that prevents private messages in both directions while preserving conversation history. It does not block messages from Operators or Administrators.
 _Avoid_: Delete conversation, report user
 
 ### Content moderation
@@ -99,5 +99,5 @@ A moderation policy that withholds member content from public view until it is a
 _Avoid_: Post review, delayed publishing
 
 **Post-publication review**:
-A moderation policy that publishes member content immediately while keeping it subject to later review and enforcement. Teacher content uses this policy, including content from Teachers with the Mentor designation.
+A moderation policy that publishes content or profile changes immediately while keeping them subject to later review and enforcement. Teacher-authored content and profile changes use this policy, including those from Teachers with the Mentor designation.
 _Avoid_: Exempt from moderation, no review
