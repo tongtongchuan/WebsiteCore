@@ -41,7 +41,7 @@ _Avoid_: migration flag
 ### Identity and access
 
 **Platform management role**:
-An account classification for operational authority across the platform. It is distinct from a member identity.
+An Operator, Administrator, or Auditor classification granting operational authority across the platform. It is distinct from a member identity.
 _Avoid_: Identity, teacher role, mentor role
 
 **Member identity**:
