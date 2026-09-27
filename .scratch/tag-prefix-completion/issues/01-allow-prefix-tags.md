@@ -2,6 +2,9 @@
 
 Status: needs-triage
 
+Target repository: BZYA-Community/WebsiteCore
+Publication: https://github.com/BZYA-Community/WebsiteCore/issues/86
+
 ## 问题描述
 
 用户无法创建与已有标签前缀相同、但更短的新标签。系统提示会强制补全已有标签，无法保留当前输入。
@@ -26,3 +29,4 @@ Status: needs-triage
 ## Comments
 
 - 2026-09-27：用户报告上述现象并要求整理为本地 issue，暂不实施；尚未进行代码或运行验证。
+- 2026-09-27：用户授权发布至 GitHub；标签：needs-triage, bug。

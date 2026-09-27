@@ -2,6 +2,9 @@
 
 Status: needs-triage
 
+Target repository: BZYA-Community/WebsiteCore
+Publication: https://github.com/BZYA-Community/WebsiteCore/issues/84
+
 ## 问题描述与需求
 
 1. 课程内容应按「课程分组 → 一个课程 → 一节课」组织，一个课程可以包含多节课。
@@ -26,3 +29,4 @@ Status: needs-triage
 
 - 2026-09-27：用户要求先记入本地 issue，暂不实施。
 - 2026-09-27：用户补充课程分组、课程、单节课三级结构，视频可选、非视频附件上传及分组和课程名称不得重复的要求。
+- 2026-09-27：用户授权发布至 GitHub；标签：needs-triage, enhancement。

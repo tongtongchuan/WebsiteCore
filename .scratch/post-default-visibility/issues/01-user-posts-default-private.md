@@ -2,6 +2,9 @@
 
 Status: needs-triage
 
+Target repository: BZYA-Community/WebsiteCore
+Publication: https://github.com/BZYA-Community/WebsiteCore/issues/85
+
 ## 问题描述
 
 用户反馈发帖默认私密，不符合用户直觉。可见性设置隐藏在「眼睛图标」中，并与附件等操作放在一起，用户不容易发现或理解。
@@ -26,3 +29,4 @@ Status: needs-triage
 
 - 2026-09-27：用户要求先记入本地 issue，暂不实施；原始描述为「用户发帖默认私密」，具体方向当时待分诊。
 - 2026-09-27：用户明确默认应为公开，并扩展可见性入口的交互改进需求。
+- 2026-09-27：用户授权发布至 GitHub；标签：needs-triage, bug, enhancement。

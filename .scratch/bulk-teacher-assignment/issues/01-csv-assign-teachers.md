@@ -2,6 +2,9 @@
 
 Status: needs-triage
 
+Target repository: BZYA-Community/WebsiteCore
+Publication: https://github.com/BZYA-Community/WebsiteCore/issues/87
+
 ## 功能需求
 
 管理员应能使用 CSV 表格，批量将普通用户设置为具有老师权限的用户。具体操作方式需进一步商讨。
@@ -22,3 +25,4 @@ Status: needs-triage
 ## Comments
 
 - 2026-09-27：用户提出新功能，明确具体操作仍需商讨；先整理为本地 issue，暂不实施。
+- 2026-09-27：用户授权发布至 GitHub；标签：needs-triage, enhancement。
