@@ -44,6 +44,10 @@ _Avoid_: migration flag
 An Operator, Administrator, or Auditor classification granting operational authority across the platform. It is distinct from a member identity.
 _Avoid_: Identity, teacher role, mentor role
 
+**Dedicated management account**:
+An account used exclusively for the Operator or Administrator role. It cannot also be a Member or be converted into one; removing its final management role deactivates the account.
+_Avoid_: Staff member, administrator member
+
 **Operator**:
 A platform management role for system-wide operational authority. An Operator uses a dedicated management account, not a member account.
 _Avoid_: Manager, owner
@@ -81,7 +85,7 @@ A person browsing without an authenticated member account. Visitor is not a memb
 _Avoid_: Guest account, unverified member
 
 **Conversation request**:
-The first private message an eligible Member sends to another Member when they have no established conversation. It remains pending and prevents further messages from that sender until the recipient replies.
+The first private message an eligible Member sends to another account when they have no established conversation. It remains pending and prevents further messages from that sender until the recipient replies.
 _Avoid_: Chat request, friend request
 
 **Established conversation**:
