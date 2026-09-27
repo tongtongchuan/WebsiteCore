@@ -45,7 +45,7 @@ An Operator, Administrator, or Auditor classification granting operational autho
 _Avoid_: Identity, teacher role, mentor role
 
 **Dedicated management account**:
-An account used exclusively for the Operator or Administrator role. It cannot also be a Member or be converted into one; removing its final management role deactivates the account.
+An account used exclusively for the Operator or Administrator role and carrying no Member identity. It may maintain a public profile and perform general community actions, but cannot perform Student- or Teacher-specific actions or be converted into a Member; removing its final management role deactivates the account.
 _Avoid_: Staff member, administrator member
 
 **Suspended account**:
@@ -57,15 +57,15 @@ An account hidden from normal use and discovery while retained for possible reco
 _Avoid_: Suspended account, hard deletion
 
 **Operator**:
-A platform management role for system-wide operational authority. An Operator uses a dedicated management account, not a member account.
+A platform management role for system-wide operational authority. It includes Administrator and content-moderation capabilities without storing redundant Administrator or Auditor roles. An Operator uses a dedicated management account, not a member account.
 _Avoid_: Manager, owner
 
 **Administrator**:
-A platform management role for user and platform administration. An Administrator uses a dedicated management account, not a member account.
+A platform management role for user and platform administration. It includes content-moderation capability without storing a redundant Auditor role. An Administrator uses a dedicated management account, not a member account.
 _Avoid_: Admin identity, teacher administrator
 
 **Auditor**:
-A platform management role that grants content-moderation authority to a Member. Operators and Administrators have the same authority without holding the Auditor role.
+A platform management role that grants content-moderation authority to a Member. It is not displayed publicly. Operators and Administrators have the same authority without holding the Auditor role.
 _Avoid_: Reviewer identity, moderator identity
 
 **Member identity**:
@@ -91,10 +91,6 @@ _Avoid_: Teacher identity, teacher role
 **Visitor**:
 A person browsing without an authenticated member account. Visitor is not a member identity.
 _Avoid_: Guest account, unverified member
-
-**Legacy display identity**:
-The deprecated single-string `identity` representation retained temporarily for older clients. It is derived from the structured management roles, member identity, and Mentor designation and is never an authorization source.
-_Avoid_: Canonical identity, permission check
 
 **Conversation request**:
 The first private message an eligible Member sends to another account when they have no established conversation. It remains pending and prevents further messages from that sender until the recipient replies.
