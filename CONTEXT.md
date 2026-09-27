@@ -44,6 +44,18 @@ _Avoid_: migration flag
 An Operator, Administrator, or Auditor classification granting operational authority across the platform. It is distinct from a member identity.
 _Avoid_: Identity, teacher role, mentor role
 
+**Operator**:
+A platform management role for system-wide operational authority. An Operator is not a member and has no member identity.
+_Avoid_: Manager, owner
+
+**Administrator**:
+A platform management role for user and platform administration. An Administrator is not a member and has no member identity.
+_Avoid_: Admin identity, teacher administrator
+
+**Auditor**:
+A platform management role for content moderation that may coexist with a member identity.
+_Avoid_: Reviewer identity, moderator identity
+
 **Member identity**:
 The exactly-one classification of an ordinary registered member as a Student or Teacher.
 _Avoid_: Management role, permission group
@@ -67,3 +79,13 @@ _Avoid_: Teacher identity, teacher role
 **Visitor**:
 A person browsing without an authenticated member account. Visitor is not a member identity.
 _Avoid_: Guest account, unverified member
+
+### Content moderation
+
+**Pre-publication review**:
+A moderation policy that withholds member content from public view until it is approved.
+_Avoid_: Post review, delayed publishing
+
+**Post-publication review**:
+A moderation policy that publishes member content immediately while keeping it subject to later review and enforcement. Teacher content uses this policy, including content from Teachers with the Mentor designation.
+_Avoid_: Exempt from moderation, no review
