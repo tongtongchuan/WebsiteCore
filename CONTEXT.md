@@ -93,11 +93,11 @@ A person browsing without an authenticated member account. Visitor is not a memb
 _Avoid_: Guest account, unverified member
 
 **Conversation request**:
-The first private message an eligible Member sends to another account when they have no established conversation. It remains pending and prevents further messages from that sender until the recipient replies.
+The first private message an eligible Member sends to another account when they have no established conversation. It remains pending and prevents further messages from that sender until the recipient replies. If an identity change makes the request ineligible, the request is cancelled without deleting its message history.
 _Avoid_: Chat request, friend request
 
 **Established conversation**:
-A private-message relationship in which both participants have sent at least one message. Eligible participants may continue messaging until either one blocks the other.
+A private-message relationship in which both participants have sent at least one message. Sending is authorized against the participants' current identities each time: an ineligible relationship becomes read-only without losing history and becomes writable again if it later regains eligibility. A private-message block independently prevents sending.
 _Avoid_: Friendship, follow relationship
 
 **Private-message block**:
