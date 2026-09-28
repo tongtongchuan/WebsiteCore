@@ -45,7 +45,7 @@ An Operator, Administrator, or Auditor classification granting operational autho
 _Avoid_: Identity, teacher role, mentor role
 
 **Dedicated management account**:
-An account used exclusively for the Operator or Administrator role and carrying no Member identity. It may maintain a public profile and perform general community actions, but cannot perform Student- or Teacher-specific actions or be converted into a Member; removing its final management role deactivates the account.
+An account used exclusively for the Operator or Administrator role and carrying no Member identity. It may maintain a public profile, publish general user-generated content, and perform general community interactions such as following, reacting, saving, and reporting, but cannot perform Student- or Teacher-specific actions or be converted into a Member; removing its final management role deactivates the account.
 _Avoid_: Staff member, administrator member
 
 **Suspended account**:
@@ -65,7 +65,7 @@ A platform management role for user and platform administration. It includes con
 _Avoid_: Admin identity, teacher administrator
 
 **Auditor**:
-A platform management role that grants content-moderation authority to a Member. It is not displayed publicly. Operators and Administrators have the same authority without holding the Auditor role.
+A platform management role that grants content-moderation authority to a Member. It is omitted from public profiles and content-author representations and is visible only to the account itself and management interfaces. Operators and Administrators have the same authority without holding the Auditor role.
 _Avoid_: Reviewer identity, moderator identity
 
 **Member identity**:
